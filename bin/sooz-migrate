@@ -1,0 +1,12 @@
+#!/bin/bash
+
+DESCRIPTION="Migrate the database"
+USAGE="usage: sooz migrate"
+HELP=""
+
+main() {
+  RESULT=$($DOCKER_BIN run -d $DOCKER_VOLUMES app /opt/app/bin/docker/migrate)
+  [ $? == 0 ] || error $RESULT
+}
+
+source "$(dirname $0)/sooz-common"

@@ -1,0 +1,59 @@
+#!/bin/bash
+
+DESCRIPTION="Build docker images"
+USAGE="usage: sooz build [--app] [--db] [--redis]"
+HELP=""
+
+build_app_image() {
+    info "Building image ${DOCKER_APP_IMG}."
+    [ -e "support/dockerfiles/${DOCKER_APP_IMG}/requirements.txt" ] || cp requirements.txt "support/dockerfiles/${DOCKER_APP_IMG}/"
+    $DOCKER_BIN build -t ${DOCKER_APP_IMG} support/dockerfiles/${DOCKER_APP_IMG}/
+    [ -e "support/dockerfiles/${DOCKER_APP_IMG}/requirements.txt" ] && rm "support/dockerfiles/${DOCKER_APP_IMG}/requirements.txt"
+}
+
+main() {
+    OPT_APP=""
+    OPT_DB=""
+    OPT_REDIS=""
+
+    while [ $# -gt 0 ]; do
+        case $1 in
+            --app)
+            OPT_APP="Y"
+            ;;
+            
+            --db)
+            OPT_DB="Y"
+            ;;
+    
+            --redis)
+            OPT_REDIS="Y"
+            ;;
+
+            "")
+            break
+            ;;
+            
+            
+            *)
+            echo $USAGE; exit 1;
+            ;;
+        esac
+        
+        shift
+    done
+    
+    if [ -z "${OPT_APP}${OPT_DB}${OPT_REDIS}" ]; then
+        # in this demo, we're just running an app server with sqlite, no other services needed
+        OPT_APP="Y"
+        #OPT_DB="Y"
+        #OPT_REDIS="Y"
+    fi
+    
+    [ "$OPT_APP" = "Y" ] && build_app_image
+    [ "$OPT_DB" = "Y" ] && warn "db container not supported"
+    [ "$OPT_REDIS" = "Y" ] && warn "redis container not supported"
+    
+}
+
+source "$(dirname $0)/sooz-common"

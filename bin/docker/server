@@ -1,0 +1,25 @@
+#!/bin/bash
+
+DESCRIPTION="Internal docker script to run the server"
+USAGE="Do not call manually"
+HELP=""
+
+main () {
+    info "Starting development server with docs.";
+
+    # Set our default bind address for runserver
+    BIND=${1:-0:8000}
+    ARGS=${@:2}
+
+    import_environment_vars
+
+    if [ -n "${DEBUG}" ]; then
+        info "Running django server"
+        WSGI_APP="${APPNAME}.omniwsgi.application" $MANAGECMD runserver $BIND $ARGS
+    else
+        info "Running through gunicorn/uwsgi"
+        /opt/env/bin/gunicorn -b $BIND ${APPNAME}.omniwsgi:application --access-logfile /var/log/django-access.log --error-logfile /var/log/django-error.log
+    fi
+}
+
+source "$(dirname $0)/../sooz-common"

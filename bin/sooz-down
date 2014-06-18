@@ -1,0 +1,19 @@
+#!/bin/bash
+
+DESCRIPTION="stop the app server"
+USAGE="usage: sooz down"
+HELP=""
+
+main() {
+	if [ -n "$(vagrant status box | grep running)" ]; then
+		info "Stopping containers"
+		docker stop $(docker ps -a -q)
+		
+		info "Stopping the VM"
+		vagrant halt box
+	else
+		info "VM is not running."
+	fi
+}
+
+source "$(dirname $0)/sooz-common"

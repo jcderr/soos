@@ -1,0 +1,145 @@
+# #!/bin/bash
+
+# set the name of your django app here
+APPNAME="myapp"
+
+if [ -n "$_imported" ]
+    then
+    return
+fi
+_imported=yes
+
+red='\033[0;31m';
+cyan='\033[0;36m';
+yellow='\033[0;33m';
+reset='\033[0m';
+
+error() {
+    echo -n -e "${red}[ERROR] $@${reset}\n";
+    exit 1;
+}
+
+info() {
+    echo -n -e "${cyan}[INFO] $@${reset}\n";
+}
+
+warn() {
+    echo -n -e "${yellow}[WARN] $@${reset}\n";
+}
+
+confirm() {
+    prompt=$1
+    if [ -z "$prompt" ];
+    then
+        prompt="Are you sure?"
+    fi;
+    read -p "$prompt [yN] " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]
+    then
+        echo -n -e "${red}Aborting.${reset}"
+        echo
+        exit 1
+    fi
+}
+
+subcommand() {
+    local C_NAME="$1"
+    shift
+    local C_ARGS="$@"
+    local C_PATH="$(dirname $BASH_SOURCE)/sooz-${C_NAME}"
+    
+    if [ -x "$C_PATH" ]; then
+        NORUN=""
+        command "$C_PATH" "$C_ARGS"
+        return 0
+    else
+        return 1 #fail
+    fi
+}
+
+# Python
+pip_install() {
+    pip install --find-links=support/pip/cache --find-links=support/pip/wheels $@;
+}
+
+pip_ensure_requirements() {
+    subcommand updatewheels
+}
+
+pip_install_requirements() {
+    pip_ensure_requirements
+    
+    info "Installing requirements"
+    pip_install -qr requirements.txt
+}
+
+import_environment_vars() {
+    if [ -e "$(dirname $0)/../../environment_vars" ]; then
+        info "Importing environment for setup"
+        for v in `cat $(dirname $0)/../../environment_vars`; do
+            if [ "${v}" != *#* ]; then
+                eval "export ${v}"
+            fi
+        done
+
+        info "Environment computed and logged to /var/log/run_environment"
+        env > /var/log/run_environment
+    else
+        warn "No environment found."
+        export DEBUG=1
+    fi
+}
+
+enforce_git_root() {
+    if [ `pwd` != "$(git rev-parse --show-toplevel)" ]; then
+        error "You must be in the repository root to run this command." 
+    fi
+}
+
+# Docker
+export DOCKER_HOST="tcp://10.1.2.4:4243"
+DOCKER_BIN=`which docker`
+
+# if you have custom images in the registry, set them here
+DOCKER_APP_IMG="app"
+DOCKER_DB_IMG="db"
+DOCKER_REDIS_IMG="redis-server"
+
+DOCKER_APP_OPTS=""
+DOCKER_DB_OPTS=""
+DOCKER_REDIS_OPTS=""
+DOCKER_VOLUMES="-v /opt/app:/opt/app -v /home:/home"
+DOCKER_PORTS="-p 80:8000 -p 2222:22 -p 8080:8080"
+
+if [ -n "${DOCKER_BIN}" ]; then
+    docker_run() { $DOCKER_BIN run -t $DOCKER_VOLUMES "$@"; }
+    docker_run_i() { $DOCKER_BIN run -t -i $DOCKER_VOLUMES "$@"; }
+fi
+
+# Setup container shell environment
+if [ -d /opt/env/bin ]; then
+    MANAGECMD="python manage.py"
+   
+    info "Activating virtualenv"
+    cd /opt/app
+    source /opt/env/bin/activate
+fi
+
+# If we've built the images locally, use those instead
+if [[ -e "${DOCKER_BIN}" && -n "$(vagrant status box | grep running)" ]]; then
+    if [ -n "$(docker images | grep ^webapp)" ]; then
+        DOCKER_APP_IMG="webapp"
+    fi
+
+    if [ -n "$(docker images | grep ^postgres)" ]; then
+        DOCKER_DB_IMG="postgres-db"
+    fi
+fi
+
+# Run the script's main() function.
+if [ "$(type -t main)" = "function" ]; then
+    main "$@"
+else
+    error "error starting command: main() missing or uncallable"
+fi

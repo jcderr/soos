@@ -1,0 +1,121 @@
+#!/bin/bash
+
+load_command() {
+    local C_NAME="$1"; shift
+    local C_PATH="$(dirname $BASH_SOURCE)/sooz-${C_NAME}"
+    
+    if [ -x "$C_PATH" ]; then
+        source "$C_PATH" "$@"
+    else
+        return 1
+    fi
+}
+
+list_commands() {
+    local CMD
+    local DESCRIPTION
+    local commands=$(ls "$(dirname $BASH_SOURCE)"/sooz-* | sed 's/^.*\/sooz-/ /')
+    
+    for CMD in $commands; do
+        load_command "$CMD" "$@" && echo "    ${CMD} - ${DESCRIPTION}"
+    done
+}
+
+show_usage() {
+    local C_NAME
+    
+    if [ -n "${1-}" ]; then
+        C_NAME="$1"; shift
+        load_command "${C_NAME}" "$@" || fail
+    else
+        C_NAME="sooz"
+    fi
+    
+    [ -n "${USAGE}" ] && echo "${USAGE}"
+    [ -n "${HELP}" ] && echo && echo "${HELP}" && echo
+    
+    exit 1
+}
+
+fail() {
+    local MESSAGE="${1-}"
+    
+    if [ -n "$MESSAGE" ]; then
+        warn "$MESSAGE"
+        shift
+    fi
+    
+    show_usage "$@"
+}
+
+main() {
+    # Shows in the usage help when listing commands
+    DESCRIPTION=""
+
+    # Shows when user requests help on the command
+    USAGE="usage: sooz [-h | --help] [-v | --verbose] [-t | --trace] [help | command] [args]"
+
+    HELP=$(list_commands)
+
+    # Parse arguments
+    # https://gist.github.com/jakesandlund/2221367
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h | --help)
+            show_usage "$2"
+            ;;
+        
+            -t | --trace)
+            set -o xtrace
+            ;;
+        
+            -v | --verbose)
+            set -o verbose
+            ;;
+
+            --)
+            break
+            ;;
+
+            --*)
+            error "invalid long option: $1"
+            ;;
+        
+            -?)
+            error "invalid option: $1"
+            ;;
+        
+            # Split apart combined short options
+            -*)
+            split=$1
+            shift
+            set -- $(echo "$split" | cut -c 2- | sed 's/./-& /g') "$@"
+            continue
+            ;;
+
+            # Done with options
+            *)
+            break
+            ;;
+        esac
+
+      shift
+    done
+
+    # Grab the subcommand
+    C_NAME="${1-}"
+
+    # Test for a subcommand
+    [ -z "$C_NAME" ] && show_usage
+
+    # Pop the subcommand name off
+    shift
+
+    # Test for and call the help command
+    [ $C_NAME = "help" ] && show_usage "$@"
+
+    # Run the subcommand
+    subcommand "${C_NAME}" "$@" || fail "invalid command: ${C_NAME}"
+}
+
+source "$(dirname $0})/sooz-common"

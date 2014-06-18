@@ -1,2 +1,5 @@
 env
 .vagrant
+*.pyo
+*.pyc
+*.sqlite3
