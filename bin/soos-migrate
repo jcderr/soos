@@ -1,7 +1,7 @@
 #!/bin/bash
 
 DESCRIPTION="Migrate the database"
-USAGE="usage: sooz migrate"
+USAGE="usage: soos migrate"
 HELP=""
 
 main() {
@@ -9,4 +9,4 @@ main() {
   [ $? == 0 ] || error $RESULT
 }
 
-source "$(dirname $0)/sooz-common"
+source "$(dirname $0)/soos-common"

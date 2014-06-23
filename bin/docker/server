@@ -22,4 +22,4 @@ main () {
     fi
 }
 
-source "$(dirname $0)/../sooz-common"
+source "$(dirname $0)/../soos-common"

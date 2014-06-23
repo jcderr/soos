@@ -29,4 +29,4 @@ main () {
     PYTHONDONTWRITEBYTECODE=1 DEBUG=${DEBUG} bin/docker/server $@
 }
 
-source "$(dirname $0)/../sooz-common"
+source "$(dirname $0)/../soos-common"

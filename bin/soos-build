@@ -1,20 +1,14 @@
 #!/bin/bash
 
-DESCRIPTION="Bring up docker containers"
-USAGE="usage: sooz up [--app] [--db] [--redis]"
+DESCRIPTION="Build docker images"
+USAGE="usage: soos build [--app] [--db] [--redis]"
 HELP=""
 
-start_or_run() {
-    [ -z "$($DOCKER_BIN images | grep $DOCKER_APP_IMG)" ] && subcommand build
-    RESULT="" 
-    CONTAINER=$($DOCKER_BIN ps -a | grep "$DOCKER_APP_IMG[[:space:]]")
-    if [ -z "${CONTAINER}" ]; then 
-        RESULT=$($DOCKER_BIN run -d $DOCKER_VOLUMES $DOCKER_PORTS --name=${DOCKER_APP_IMG} app /opt/app/bin/docker/run 0.0.0.0:8000)
-    else
-        RESULT=$($DOCKER_BIN start ${DOCKER_APP_IMG})
-    fi
-
-    info "Container $DOCKER_APP_IMG started"
+build_app_image() {
+    info "Building image ${DOCKER_APP_IMG}."
+    [ -e "support/dockerfiles/${DOCKER_APP_IMG}/requirements.txt" ] || cp requirements.txt "support/dockerfiles/${DOCKER_APP_IMG}/"
+    $DOCKER_BIN build -t ${DOCKER_APP_IMG} support/dockerfiles/${DOCKER_APP_IMG}/
+    [ -e "support/dockerfiles/${DOCKER_APP_IMG}/requirements.txt" ] && rm "support/dockerfiles/${DOCKER_APP_IMG}/requirements.txt"
 }
 
 main() {
@@ -49,8 +43,6 @@ main() {
         shift
     done
     
-    client_setup
-    
     if [ -z "${OPT_APP}${OPT_DB}${OPT_REDIS}" ]; then
         # in this demo, we're just running an app server with sqlite, no other services needed
         OPT_APP="Y"
@@ -58,18 +50,10 @@ main() {
         #OPT_REDIS="Y"
     fi
     
-	# check vagrant up/status
-	if [ -z "$(vagrant status box | grep running)" ]; then
-	  info "Starting the VM"
-		vagrant up box
-	else
-	  info "VM is already running"
-	fi
-    
-    [ "$OPT_APP" = "Y" ] && start_or_run
+    [ "$OPT_APP" = "Y" ] && build_app_image
     [ "$OPT_DB" = "Y" ] && warn "db container not supported"
     [ "$OPT_REDIS" = "Y" ] && warn "redis container not supported"
     
 }
 
-source "$(dirname $0)/sooz-common"
+source "$(dirname $0)/soos-common"

@@ -80,7 +80,7 @@ subcommand() {
     local C_NAME="$1"
     shift
     local C_ARGS="$@"
-    local C_PATH="$(dirname $BASH_SOURCE)/sooz-${C_NAME}"
+    local C_PATH="$(dirname $BASH_SOURCE)/soos-${C_NAME}"
     
     if [ -x "$C_PATH" ]; then
         NORUN=""

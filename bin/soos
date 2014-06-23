@@ -2,7 +2,7 @@
 
 load_command() {
     local C_NAME="$1"; shift
-    local C_PATH="$(dirname $BASH_SOURCE)/sooz-${C_NAME}"
+    local C_PATH="$(dirname $BASH_SOURCE)/soos-${C_NAME}"
     
     if [ -x "$C_PATH" ]; then
         source "$C_PATH" "$@"
@@ -14,7 +14,7 @@ load_command() {
 list_commands() {
     local CMD
     local DESCRIPTION
-    local commands=$(ls "$(dirname $BASH_SOURCE)"/sooz-* | sed 's/^.*\/sooz-/ /')
+    local commands=$(ls "$(dirname $BASH_SOURCE)"/soos-* | sed 's/^.*\/soos-/ /')
     
     for CMD in $commands; do
         load_command "$CMD" "$@" && echo "    ${CMD} - ${DESCRIPTION}"
@@ -28,7 +28,7 @@ show_usage() {
         C_NAME="$1"; shift
         load_command "${C_NAME}" "$@" || fail
     else
-        C_NAME="sooz"
+        C_NAME="soos"
     fi
     
     [ -n "${USAGE}" ] && echo "${USAGE}"
@@ -53,7 +53,7 @@ main() {
     DESCRIPTION=""
 
     # Shows when user requests help on the command
-    USAGE="usage: sooz [-h | --help] [-v | --verbose] [-t | --trace] [help | command] [args]"
+    USAGE="usage: soos [-h | --help] [-v | --verbose] [-t | --trace] [help | command] [args]"
 
     HELP=$(list_commands)
 
@@ -118,4 +118,4 @@ main() {
     subcommand "${C_NAME}" "$@" || fail "invalid command: ${C_NAME}"
 }
 
-source "$(dirname $0})/sooz-common"
+source "$(dirname $0})/soos-common"

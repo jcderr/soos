@@ -1,4 +1,4 @@
-# SOOZ
+# SOOS
 
 Sooz is a framework for working with docker images in a development environment. It serves as an example for how to build
 your own, rather than a drop-in system. The example is a [python-django](http://djangoproject.com) project. The idea is to
@@ -14,22 +14,22 @@ many of these scripts take a handful of optional arguments.
 
 # How It Works
 
-    bin/sooz up
+    bin/soos up
 
-`sooz-up` will launch a new vagrant box, set up docker, and set docker to listen on `tcp://0.0.0.0:4243` so our scripts
+`soos-up` will launch a new vagrant box, set up docker, and set docker to listen on `tcp://0.0.0.0:4243` so our scripts
 can talk to it.
 
-    bin/sooz down
+    bin/soos down
 
-`sooz-down` will stop all containers and halt the vagrant box.
+`soos-down` will stop all containers and halt the vagrant box.
 
-    bin/sooz migrate
+    bin/soos migrate
 
-`sooz-migrate` runs django's syncdb followed by database migrations.
+`soos-migrate` runs django's syncdb followed by database migrations.
 
-    bin/sooz build
+    bin/soos build
 
-`sooz-build` will completely rebuild the docker images at the base of our app from scratch, using `Dockerfiles` located in
+`soos-build` will completely rebuild the docker images at the base of our app from scratch, using `Dockerfiles` located in
 `support/dockerfiles/`
 
 # Dockerfiles
@@ -43,4 +43,4 @@ reside in `/opt/app`.
 
 # TODO
 
-* `sooz-up` should check to see if the docker binary is installed (eg. [boot2docker](https://github.com/boot2docker/boot2docker)).
+* `soos-up` should check to see if the docker binary is installed (eg. [boot2docker](https://github.com/boot2docker/boot2docker)).

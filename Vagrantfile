@@ -13,7 +13,7 @@ SCRIPT
 
 Vagrant.configure("2") do |config|
   config.vm.define :box, primary: true, autostart: true do |box|
-    box.vm.box = "sooz"
+    box.vm.box = "soos"
     box.vm.box_url = "https://github.com/2creatives/vagrant-centos/releases/download/v6.4.2/centos64-x86_64-20140116.box"
 
     box.vm.hostname = "dev.local"
