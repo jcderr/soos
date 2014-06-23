@@ -49,6 +49,8 @@ main() {
         shift
     done
     
+    client_setup
+    
     if [ -z "${OPT_APP}${OPT_DB}${OPT_REDIS}" ]; then
         # in this demo, we're just running an app server with sqlite, no other services needed
         OPT_APP="Y"

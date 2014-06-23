@@ -14,6 +14,39 @@ cyan='\033[0;36m';
 yellow='\033[0;33m';
 reset='\033[0m';
 
+client_setup() {
+  BREW=`which brew`
+  DOCKER=`which docker`
+  VAGRANT=`which vagrant`
+  
+  if [ ! -e "$BREW" ]; then
+    warn "Homebrew is not installed."
+    confirm "Would you like to install it?"
+    ruby -e "$(curl -fsSL https://raw.github.com/Homebrew/homebrew/go/install)"
+    brew install phinze/cask/brew-cask
+    brew update
+    brew cask update
+  fi
+  
+  if [ ! -e "$DOCKER" ]; then
+    warn "Docker is not installed."
+    confirm "Would you like to install it?"
+    brew install docker
+  fi
+    
+  if [ ! -e "/usr/bin/VBoxManage" ]; then
+    warn "VirtualBox is not installed."
+    confirm "Would you like to install it?"
+    brew cask install virtualbox
+  fi
+  
+  if [ ! -e "$VAGRANT" ]; then
+    warn "Vagrant is not installed."
+    confirm "Would you like to install it?"
+    brew cask install vagrant
+  fi
+}
+
 error() {
     echo -n -e "${red}[ERROR] $@${reset}\n";
     exit 1;
