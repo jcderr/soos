@@ -23,10 +23,6 @@ can talk to it.
 
 `sooz-down` will stop all containers and halt the vagrant box.
 
-    bin/sooz rebuild
-
-`sooz-rebuild` will stop and remove all containers, and rebuild them again from the base images.
-
     bin/sooz migrate
 
 `sooz-migrate` runs django's syncdb followed by database migrations.
