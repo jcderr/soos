@@ -1,6 +1,6 @@
 # SOOS
 
-Sooz is a framework for working with docker images in a development environment. It serves as an example for how to build
+Soos is a framework for working with docker images in a development environment. It serves as an example for how to build
 your own, rather than a drop-in system. The example is a [python-django](http://djangoproject.com) project. The idea is to
 provide some project-workflow scripting that abstracts away the myriad flags, args, and concepts of docker itself. Convention
 is preferred over configuration, but you can customize the scripts to your own needs. Internally at [Djed](http://djed.com/),
