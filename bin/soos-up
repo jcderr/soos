@@ -1,75 +1,52 @@
 #!/bin/bash
 
-DESCRIPTION="Bring up docker containers"
-USAGE="usage: soos up [--app] [--db] [--redis]"
+DESCRIPTION="start the containers"
+USAGE="usage: soos up [--base]"
 HELP=""
 
-start_or_run() {
-    [ -z "$($DOCKER_BIN images | grep $DOCKER_APP_IMG)" ] && subcommand build
-    RESULT="" 
-    CONTAINER=$($DOCKER_BIN ps -a | grep "$DOCKER_APP_IMG[[:space:]]")
-    if [ -z "${CONTAINER}" ]; then 
-        RESULT=$($DOCKER_BIN run -d $DOCKER_VOLUMES $DOCKER_PORTS --name=${DOCKER_APP_IMG} app /opt/app/bin/docker/run 0.0.0.0:8000)
-    else
-        RESULT=$($DOCKER_BIN start ${DOCKER_APP_IMG})
-    fi
-
-    info "Container $DOCKER_APP_IMG started"
-}
-
 main() {
-    OPT_APP=""
-    OPT_DB=""
-    OPT_REDIS=""
+    OPT_BASE=""
 
     while [ $# -gt 0 ]; do
         case $1 in
-            --app)
-            OPT_APP="Y"
-            ;;
+            --base)
+                OPT_BASE="Y"
+                ;;
             
-            --db)
-            OPT_DB="Y"
-            ;;
-    
-            --redis)
-            OPT_REDIS="Y"
-            ;;
-
             "")
-            break
-            ;;
-            
+                break
+                ;;
             
             *)
-            echo $USAGE; exit 1;
-            ;;
+                echo $USAGE; exit 1;
+                ;;
         esac
         
         shift
     done
-    
-    client_setup
-    
-    if [ -z "${OPT_APP}${OPT_DB}${OPT_REDIS}" ]; then
-        # in this demo, we're just running an app server with sqlite, no other services needed
-        OPT_APP="Y"
-        #OPT_DB="Y"
-        #OPT_REDIS="Y"
+
+    if [[ ! -e "$(dirname $0)/../environment_vars" ]]; then
+        echo "DEBUG=1" >> "$(dirname $0)/../environment_vars"
+        echo "PYTHONDONTWRITEBYTECODE=1" >> "$(dirname $0)/../environment_vars"
+    fi
+
+    if [ -z "${OPT_BASE}" ]; then
+        OPT_BASE="Y"
     fi
     
-	# check vagrant up/status
-	if [ -z "$(vagrant status box | grep running)" ]; then
-	  info "Starting the VM"
-		vagrant up box
-	else
-	  info "VM is already running"
-	fi
-    
-    [ "$OPT_APP" = "Y" ] && start_or_run
-    [ "$OPT_DB" = "Y" ] && warn "db container not supported"
-    [ "$OPT_REDIS" = "Y" ] && warn "redis container not supported"
-    
+    if [[ -z "$(vagrant status default | grep running)" ]]; then
+        info "Starting the VM"
+        vagrant up default || error "Failed to bring up vagrant: $!"
+    fi
+
+    LOGIN=$($DOCKER_BIN info 2>&1 | egrep ^Username | awk -F': ' '{ print $2 }')
+    if [[ -z "$LOGIN" ]]; then
+        warn "Docker login: X"
+        info "You must log in to docker.com to continue."
+        $DOCKER_BIN login || error "Login failed!"
+    fi
+
+    [[ -n "$OPT_BASE" ]] && subcommand run-container-by-name base    
 }
 
 source "$(dirname $0)/soos-common"

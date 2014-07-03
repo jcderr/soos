@@ -1,0 +1,55 @@
+### Example Container Configuration
+###
+### Jeremy Derr <jeremy@derr.me>
+###
+##
+## This file provides an example docker container configuration.
+## Alter these settings to meet your needs.
+
+# Specify ports to be exported
+PORTS="80:80"
+
+# Specify any volumes to be shared or exported
+#   <host location>:<container location> - shares directories from host machine into container
+#   <host location>                      - exports container directories for use by other containers
+#
+# /opt/app is a location that is on the docker host, and is shared into the container at the same path
+# /opt/env is exported out so that other containers can use these files using --volumes-from <container name>
+# /opt/logs does the same, for the logs directory (used by soos-logs)
+VOLUMES="/opt/app:/opt/app /opt/env /opt/logs"
+
+# Specify another container by name or ID from which to use directories from.
+# You CANNOT specify alternative mount locations. ie. the data container's /opt/logs will overlay your /opt/logs
+VOLUMES_FROM=""
+
+# Docker image from which this container is based
+IMAGE=ubuntu:14.04
+
+# The command to invoke when running the container. If left blank, the image's default CMD directive is used.
+CMD="bash"
+
+# Informs docker to pass -d and background the container
+DAEMONIZE=Y
+
+# Informs docker that this container will be interactive (ie. a shell, etc)
+#INTERACTIVE=Y
+
+# Container shell environment variables to set. This is in addition to anything you specify in [gitroot]/environment_vars (which will generally get applied to all containers)
+CENV="DEBUG=True"
+
+# If users will be able to build this image from scratch, this Dockerfile will be used
+DOCKERFILE="support/dockerfiles/webapp/Dockerfile"
+
+# Should this container be kept after exit?
+# If not, `docker rm <container id>` will be called upon exit.
+KEEP=Y
+
+# Special, long-lived containers should be named. Databases, the main webapp, etc.
+# Setting this allows soos-status to report on the app.
+# The name of this container is taken from its conf filename (ie. 'app.conf' creates a named container called 'app')
+NAMED=Y
+
+# Bash test to perform to determine if container is healthy.
+# Used by soos-status. Will be invoked via [[ $HEALTH_CHECK ]] test construct. BE WARNED!
+# soos-status only reports on NAMED=Y containers, so this is superfluous otherwise.
+HEALTH_CHECK=""

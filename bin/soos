@@ -49,6 +49,8 @@ fail() {
 }
 
 main() {
+    export DOCKER_HOST
+    
     # Shows in the usage help when listing commands
     DESCRIPTION=""
 

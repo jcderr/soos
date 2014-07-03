@@ -1,0 +1,132 @@
+#!/bin/bash
+
+DESCRIPTION="check the status of the containers"
+USAGE="usage: soos status"
+HELP=""
+
+_ready() {
+    info "$(printf -- "  - %-14s %-14s %s" "$1" "READY" "$2")"
+}
+
+_not_ready() {
+    warn "$(printf -- "  - %-14s %-14s %s" "$1" "NOT READY" "$2")"
+}
+
+container_status_line() {
+            name=$(echo $container | awk -F\/ '{ print ( $(NF) ) }' | awk -F\. '{ print $1 }')
+            while read line
+            do
+                if [[ "$(echo $line | grep -v ^#)" ]]; then
+                    local "$line"
+                fi
+            done < $container
+            if [[ "${KEEP}" == "Y" ]]
+            then
+                # we only report on keepers
+                printf "%-15s | %-26s"  $name $IMAGE
+                container_status="$(check_container $name)"
+                if [[ "$container_status" == "RUNNING" ]]
+                then
+                    printf "| %-13s" $check
+                elif [[ -n "${container_status}" ]]; then
+                    printf "| %-11s" "X"
+                    printf "| %-15s\n" "-"
+                    continue
+                else
+                    printf "| %-11s" "-"
+                    printf "| %-15s\n" "-"
+                    continue
+                fi
+
+                [[ -z "${HEALTH_CHECK}" ]] && printf "| %-15s\n" "-" && continue
+                [[ ${HEALTH_CHECK} ]] && printf "| %-15s\n" $check
+            fi
+}
+
+check_container() {
+    container=$1
+    STATUS=""
+    if [[ -n "`$DOCKER_BIN ps | egrep "$container\s+$"`" ]]; then
+        STATUS="RUNNING"
+    elif [[ -n "`$DOCKER_BIN ps -a | egrep "$container\s+$"`" ]]; then
+        STATUS="AVAILABLE"
+    fi
+    
+    echo $STATUS
+}
+
+check_image() {
+    image=$1
+    STATUS=""
+    tag=$(echo $image | awk -F: '{ print $2 }')
+    image=$(echo $image | awk -F: '{ print $1 }')
+    if [[ -n "`$DOCKER_BIN images | egrep "^$image\s+$tag"`" ]]; then
+        STATUS="AVAILABLE"
+    fi
+
+    echo $STATUS
+}
+
+main() {
+    CONTAINER=""
+    IMAGE=""
+
+    while [ $# -gt 0 ]; do
+        case $1 in
+            --container)
+            CONTAINER=$2
+            IMAGE=""
+            ;;
+            
+            --image)
+            IMAGE=$2
+            CONTAINER=""
+            ;;
+    
+            "")
+            break
+            ;;
+            
+            *)
+            echo $USAGE; exit 1;
+            ;;
+        esac
+        
+        shift
+        shift
+    done
+        
+    if [ -z "${CONTAINER}${IMAGE}" ]; then
+    	if [[ ! -n "$BOOT2DOCKER" ]] && [[ -z "$(vagrant status box | grep running)" ]]
+    		then
+            vagrant status box | grep box || error "Unable to get vagrant box status."
+            error "Docker VM is not running."
+    	fi
+	
+    	if [ -z "$(which docker)" ]; then
+    	    error "Docker not found. Cannot determine status."
+    	fi
+
+        red='\033[0;31m'
+        yellow='\033[0;33m'
+        green='\033[1;32m'
+        reset='\033[0m'
+        check='✔'
+
+        echo -e "----------------------- SOOS STACK STATUS -----------------------"
+        printf "%-15s | %-25s | %-10s | %-10s\n" "Container Name" "Image Name" "Running" "Status"
+        echo -e "-----------------------------------------------------------------"
+
+        for container in $(dirname $0)/../.soos/*.conf
+        do
+            container_status_line $container
+        done
+        echo -e "-----------------------------------------------------------------"
+    else
+        [[ -n "$CONTAINER" ]] && check_container $CONTAINER
+        [[ -n "$IMAGE" ]] && check_image $IMAGE
+    fi
+    
+}
+
+source "$(dirname $0)/soos-common"

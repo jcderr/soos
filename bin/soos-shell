@@ -1,0 +1,11 @@
+#!/bin/bash
+
+DESCRIPTION="start a shell container"
+USAGE="usage: soos shell"
+HELP=""
+
+main() {
+    subcommand run-container-by-name shell
+}
+
+source "$(dirname $0)/soos-common"

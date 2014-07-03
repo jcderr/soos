@@ -1,0 +1,80 @@
+#!/bin/bash
+
+DESCRIPTION="Run a Container by Name (Creating if necessary)"
+USAGE="usage: soos run-container-by-name"
+HELP=""
+
+main() {
+    OPT_FORCE=""
+    [[ -n "$1" ]] || error "A container name must be provided."
+    name=$1; shift;
+    
+    case $1 in
+        --force)
+            OPT_FORCE="Y"
+            ;;
+    esac
+
+    [[ -e "$(dirname $0)/../.soos/${name}.conf" ]] || error "Configuration ${name}.conf not found."
+    source "$(dirname $0)/../.soos/${name}.conf" || error "Unable to read config file ${name}.conf: $!"
+
+    if [[ "${DAEMONIZE}" == "Y" ]] && [[ "${INTERACTIVE}" == "Y" ]]; then
+        error "CONFLICT: Container specifies both DAEMONIZE and INTERACTIVE."
+    fi
+
+    if [[ "$(subcommand status --container $name)" == "AVAILABLE" ]]; then
+        attach=""
+        [[ -n "${INTERACTIVE}" ]] && attach="-ia"
+        if [[ -n "${attach}" ]]; then
+            $DOCKER_BIN start $attach $name || error "Unable to start container $name: $!"
+        else
+            status "Restarting container $name" $DOCKER_BIN start $attach $name || error "Unable to start container $name: $!"
+        fi
+    elif [[ "$(subcommand status --container $name)" != "RUNNING" ]]; then
+        volumes=""
+        [[ -n "${VOLUMES_FROM}" ]] && volumes="$volumes --volumes-from $VOLUMES_FROM"
+        ports=""
+        options=$OPTS
+        image="$IMAGE"
+        cmd=$CMD
+
+        [[ "${KEEP}" != "Y" ]] && options="$options --rm=true" && warn "Will not keep the $name container on exit!"
+        [[ "${DAEMONIZE}" == "Y" ]] && options="$options -d"
+        [[ "${INTERACTIVE}" == "Y" ]] && options="$options -ti"
+        [[ "${NAMED}" == "Y" ]] && options="$options --name $name"
+
+        cenv=""
+
+        [[ -e "$(dirname $0)/../environment_vars" ]] && cenv="$cenv --env-file=$(dirname $0)/../environment_vars"
+
+        for e in $CENV
+        do
+            cenv="$cenv -e ${e}"
+        done
+
+        for v in $VOLUMES
+        do
+            volumes="$volumes -v $v"
+        done
+
+        for p in $PORTS
+        do
+            ports="$ports -p $p"
+        done
+
+        [[ -z "$($DOCKER_BIN images -a | grep $image)" ]] || $DOCKER_BIN pull $image
+
+        if [[ "${DAEMONIZE}" == "Y" ]]
+        then
+            status "Starting daemonized container $name" $DOCKER_BIN run $cenv $options $ports $volumes $image $cmd
+        else
+            info "Starting interactive container $name"
+            $DOCKER_BIN run $options $ports $volumes $cenv $image $cmd
+        fi
+    #else
+    #    error "Unable to run container $name:\n $(subcommand status --container $name)"
+    fi
+
+}
+
+source "$(dirname $0)/soos-common"

@@ -1,51 +1,26 @@
 # #!/bin/bash
 
-# set the name of your django app here
-APPNAME="myapp"
-
 if [ -n "$_imported" ]
     then
     return
 fi
+
 _imported=yes
+
+# Docker
+export DOCKER_HOST="tcp://10.1.2.4:2375"
+LOCAL_SRC="$(dirname $0)/.."
+
+ENV_FILE="$(dirname $0)/../environment_vars"
+VAGRANT_BIN=`which vagrant`
+DOCKER_BIN=`which docker`
 
 red='\033[0;31m';
 cyan='\033[0;36m';
 yellow='\033[0;33m';
+green='\033[1;32m';
 reset='\033[0m';
-
-client_setup() {
-  BREW=`which brew`
-  DOCKER=`which docker`
-  VAGRANT=`which vagrant`
-  
-  if [ ! -e "$BREW" ]; then
-    warn "Homebrew is not installed."
-    confirm "Would you like to install it?"
-    ruby -e "$(curl -fsSL https://raw.github.com/Homebrew/homebrew/go/install)"
-    brew install phinze/cask/brew-cask
-    brew update
-    brew cask update
-  fi
-  
-  if [ ! -e "$DOCKER" ]; then
-    warn "Docker is not installed."
-    confirm "Would you like to install it?"
-    brew install docker
-  fi
-    
-  if [ ! -e "/usr/bin/VBoxManage" ]; then
-    warn "VirtualBox is not installed."
-    confirm "Would you like to install it?"
-    brew cask install virtualbox
-  fi
-  
-  if [ ! -e "$VAGRANT" ]; then
-    warn "Vagrant is not installed."
-    confirm "Would you like to install it?"
-    brew cask install vagrant
-  fi
-}
+check='\033[1;32m✔\033[0;39m';
 
 error() {
     echo -n -e "${red}[ERROR] $@${reset}\n";
@@ -76,6 +51,28 @@ confirm() {
     fi
 }
 
+if [[ -e "$ENV_FILE" ]]; then
+    DOCKER_EXTRA_OPTS="${DOCKER_EXTRA_OPTS} --env-file=$ENV_FILE"
+fi
+
+is_container_running() {
+    NAME="$1"
+    state=$($DOCKER_BIN ps | egrep -c "${NAME}\s+$")
+    echo $state
+}
+
+is_container_available() {
+    NAME="$1"
+    state=$($DOCKER_BIN ps -a | egrep -c "${NAME}\s+$")
+    echo $state
+}
+
+is_image_available() {
+    NAME=$(echo $1 | awk -F: '{ print $1 }')
+    TAG=$(echo $1 | awk -F: '{ print $2 }')
+    state=$($DOCKER_BIN images -a | egrep -c '^$NAME\s+$TAG')
+}
+
 subcommand() {
     local C_NAME="$1"
     shift
@@ -93,7 +90,7 @@ subcommand() {
 
 # Python
 pip_install() {
-    pip install --find-links=support/pip/cache --find-links=support/pip/wheels $@;
+    pip install --exists-action i --find-links=support/pip/cache --find-links=support/pip/wheels $@;
 }
 
 pip_ensure_requirements() {
@@ -119,7 +116,6 @@ import_environment_vars() {
         info "Environment computed and logged to /var/log/run_environment"
         env > /var/log/run_environment
     else
-        warn "No environment found."
         export DEBUG=1
     fi
 }
@@ -130,49 +126,56 @@ enforce_git_root() {
     fi
 }
 
-# Docker
-export DOCKER_HOST="tcp://10.1.2.4:4243"
-DOCKER_BIN=`which docker`
+run_command() {
+    $@ 2>&1
+    echo $?
+}
 
-# if you have custom images in the registry, set them here
-DOCKER_APP_IMG="app"
-DOCKER_DB_IMG="db"
-DOCKER_REDIS_IMG="redis-server"
-
-DOCKER_APP_OPTS=""
-DOCKER_DB_OPTS=""
-DOCKER_REDIS_OPTS=""
-DOCKER_VOLUMES="-v /opt/app:/opt/app -v /home:/home"
-DOCKER_PORTS="-p 80:8000 -p 2222:22 -p 8080:8080"
+status() {
+    [[ "$1" == "-v" ]] && VERBOSE=1 && shift
+    
+    MESSAGE=$1
+    shift
+    CMD=$@
+    echo -n -e "${green}[RUN] ${MESSAGE}... "
+    RESULT=$(run_command $CMD)
+    if [[ $RESULT != 0 ]]; then
+        echo -e "${check}${reset}"
+    else
+        echo "X"
+    fi
+}
 
 if [ -n "${DOCKER_BIN}" ]; then
-    docker_run() { $DOCKER_BIN run -t $DOCKER_VOLUMES "$@"; }
-    docker_run_i() { $DOCKER_BIN run -t -i $DOCKER_VOLUMES "$@"; }
+    docker_run() { $DOCKER_BIN run -t $DOCKER_EXTRA_OPTS $DOCKER_VOLUMES $@; }
+    docker_run_i() { $DOCKER_BIN run -ti $DOCKER_EXTRA_OPTS $DOCKER_VOLUMES $@; }
 fi
 
 # Setup container shell environment
 if [ -d /opt/env/bin ]; then
     MANAGECMD="python manage.py"
-   
-    info "Activating virtualenv"
+    
     cd /opt/app
     source /opt/env/bin/activate
 fi
 
-# If we've built the images locally, use those instead
-if [[ -e "${DOCKER_BIN}" && -n "$(vagrant status box | grep running)" ]]; then
-    if [ -n "$(docker images | grep ^webapp)" ]; then
-        DOCKER_APP_IMG="webapp"
+image_age() {
+    [[ -n "$1" ]] || error "Image name required"
+    IMAGE=$(echo "$1" | awk -F: '{ print $1 }')
+    TAG=$(echo "$1" | awk -F: '{ print $2 }')
+    IMAGE_META=$($DOCKER_BIN images | egrep ^$IMAGE | grep $TAG)
+    if [[ -n "$(echo $IMAGE_META | grep -v About)" ]]; then
+        AGE="$(echo $IMAGE_META | awk '{ print $4, $5 }')"
+    else
+        AGE="~1 hour"
     fi
-
-    if [ -n "$(docker images | grep ^postgres)" ]; then
-        DOCKER_DB_IMG="postgres-db"
-    fi
-fi
+    
+    echo $AGE
+}
 
 # Run the script's main() function.
 if [ "$(type -t main)" = "function" ]; then
-    main "$@"
+    main $@
 else
     error "error starting command: main() missing or uncallable"
 fi
