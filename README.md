@@ -16,31 +16,13 @@ many of these scripts take a handful of optional arguments.
 
     bin/soos up
 
-`soos-up` will launch a new vagrant box, set up docker, and set docker to listen on `tcp://0.0.0.0:4243` so our scripts
+Launch a new vagrant box, set up docker, and set docker to listen on `tcp://0.0.0.0:2375` so our scripts
 can talk to it.
-
-    bin/soos down
-
-`soos-down` will stop all containers and halt the vagrant box.
-
-    bin/soos migrate
-
-`soos-migrate` runs django's syncdb followed by database migrations.
 
     bin/soos build
 
-`soos-build` will completely rebuild the docker images at the base of our app from scratch, using `Dockerfiles` located in
-`support/dockerfiles/`
+Completely rebuild the docker images at the base of our app from scratch, using `Dockerfile`.
 
-# Dockerfiles
-
-We deploy with [AWS Beanstalk](http://aws.amazon.com/elasticbeanstalk/), so the root-level `Dockerfile` is intended mostly for this
-deployment. As such, we tuck away our developer environment `Dockerfile` in `support/dockerfiles`. The only major difference is that
-the root `Dockerfile` will use `ADD` to copy our code into the image, whereas `support/dockerfiles/app/Dockerfile` only copies in 
-`requirements.txt` so as to seed the image with what it needs to install a python `virtualenv`. It's expected that the code will be
-shared into the developer environment using docker's `-v [volume]:[volume]` argument. As convention, we prefer that code always 
-reside in `/opt/app`.
-
-# TODO
-
-* `soos-up` should check to see if the docker binary is installed (eg. [boot2docker](https://github.com/boot2docker/boot2docker)).
+    bin/soos shell
+    
+Start a shell using the base container.
